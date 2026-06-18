@@ -380,6 +380,52 @@
       line-height: 1.1;
     }
 
+    .category-stats {
+      padding: 14px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 10px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .category-stat {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fbfcfe;
+      display: grid;
+      gap: 8px;
+    }
+
+    .category-stat header {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .category-stat h3 {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.25;
+    }
+
+    .category-stat .mini-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .category-stat strong {
+      display: block;
+      margin-top: 2px;
+      color: var(--ink);
+      font-size: 15px;
+      line-height: 1.2;
+    }
+
     .workspace {
       display: grid;
       grid-template-columns: minmax(0, 1fr);
@@ -406,7 +452,7 @@
     .toolbar {
       padding: 14px;
       display: grid;
-      grid-template-columns: minmax(180px, 1fr) 160px 160px;
+      grid-template-columns: minmax(180px, 1fr) 150px 170px 150px;
       gap: 10px;
       border-bottom: 1px solid var(--line);
     }
@@ -970,6 +1016,10 @@
               <strong id="statRevenue">¥0</strong>
             </div>
             <div class="stat">
+              <span>预计利润</span>
+              <strong id="statProfit">¥0</strong>
+            </div>
+            <div class="stat">
               <span>待发货</span>
               <strong id="statShip">0</strong>
             </div>
@@ -1012,6 +1062,7 @@
             </div>
 
             <div class="table-wrap">
+              <section class="category-stats" id="categoryStats" aria-label="分类统计"></section>
               <table>
                 <thead>
                   <tr>
@@ -1108,6 +1159,18 @@
           <input id="price" name="price" type="number" min="0" step="1" required placeholder="1500">
         </div>
         <div class="field">
+          <label for="cost">进货/主机成本</label>
+          <input id="cost" name="cost" type="number" min="0" step="1" placeholder="1200">
+        </div>
+        <div class="field">
+          <label for="shippingCost">运费成本</label>
+          <input id="shippingCost" name="shippingCost" type="number" min="0" step="1" placeholder="18">
+        </div>
+        <div class="field">
+          <label for="otherCost">其他成本</label>
+          <input id="otherCost" name="otherCost" type="number" min="0" step="1" placeholder="配件、维修、包装">
+        </div>
+        <div class="field">
           <label for="status">状态</label>
           <select id="status" name="status" required>
             <option value="draft">沟通中</option>
@@ -1168,7 +1231,7 @@
         <div class="joy-right"></div>
       </div>
       <h2 id="authTitle">登录订单看板</h2>
-      <p id="authHint">登录后可以新增、修改和删除订单；未登录用户只能查看。</p>
+      <p id="authHint">登录后才能查看、新增、修改和删除订单。</p>
       <div class="field" id="oldPasswordField" hidden>
         <label for="oldPassword">当前密码</label>
         <input id="oldPassword" name="oldPassword" type="password" autocomplete="current-password">
@@ -1227,6 +1290,9 @@
         category: "switch-oled",
         buyer: "小陈想要马车",
         price: 1580,
+        cost: 1280,
+        shippingCost: 18,
+        otherCost: 20,
         status: "paid",
         date: "2026-06-17",
         shipping: "未发货",
@@ -1242,6 +1308,9 @@
         category: "uncategorized",
         buyer: "海边林克",
         price: 238,
+        cost: 175,
+        shippingCost: 8,
+        otherCost: 0,
         status: "shipped",
         date: "2026-06-16",
         shipping: "中通 ZT77881234",
@@ -1257,6 +1326,9 @@
         category: "uncategorized",
         buyer: "Nora",
         price: 255,
+        cost: 190,
+        shippingCost: 10,
+        otherCost: 0,
         status: "done",
         date: "2026-06-14",
         shipping: "顺丰 SF10293847",
@@ -1299,8 +1371,10 @@
       doneSortSelect: document.querySelector("#doneSortSelect"),
       statCount: document.querySelector("#statCount"),
       statRevenue: document.querySelector("#statRevenue"),
+      statProfit: document.querySelector("#statProfit"),
       statShip: document.querySelector("#statShip"),
       statConfirm: document.querySelector("#statConfirm"),
+      categoryStats: document.querySelector("#categoryStats"),
       pendingCount: document.querySelector("#pendingCount"),
       pendingShip: document.querySelector("#pendingShip"),
       pendingAfter: document.querySelector("#pendingAfter"),
@@ -1385,7 +1459,9 @@
     els.doneSortSelect.addEventListener("change", render);
     els.orderForm.elements.date.addEventListener("input", syncExpectedDone);
     els.orderForm.elements.durationDays.addEventListener("input", syncExpectedDone);
-    els.authCancel.addEventListener("click", () => showAuth("unlocked"));
+    els.authCancel.addEventListener("click", () => {
+      if (currentUser) showAuth("unlocked");
+    });
     els.sidebarShell.addEventListener("pointerenter", () => els.sidebarShell.classList.add("is-open"));
     els.sidebarShell.addEventListener("pointerleave", () => els.sidebarShell.classList.remove("is-open"));
 
@@ -1401,6 +1477,9 @@
       const nextOrder = normalizeOrder({
         ...data,
         price: Number(data.price || 0),
+        cost: Number(data.cost || 0),
+        shippingCost: Number(data.shippingCost || 0),
+        otherCost: Number(data.otherCost || 0),
         durationDays,
         expectedDone: data.expectedDone || addDays(data.date, durationDays),
         id: editingId || crypto.randomUUID(),
@@ -1422,8 +1501,8 @@
         const { error } = await db.auth.signInWithPassword({ email, password });
         if (error) throw error;
         await refreshSession();
+        await loadOrdersFromCloud();
         showAuth("unlocked");
-        render();
       } catch (error) {
         els.authError.textContent = error.message || "登录失败，请检查邮箱和密码。";
       }
@@ -1478,6 +1557,9 @@
         category: row.category,
         buyer: row.buyer,
         price: Number(row.price || 0),
+        cost: Number(row.cost || 0),
+        shippingCost: Number(row.shipping_cost || 0),
+        otherCost: Number(row.other_cost || 0),
         status: row.status,
         date: row.date,
         durationDays: row.duration_days,
@@ -1497,6 +1579,9 @@
         category: order.category || "uncategorized",
         buyer: order.buyer,
         price: Number(order.price || 0),
+        cost: Number(order.cost || 0),
+        shipping_cost: Number(order.shippingCost || 0),
+        other_cost: Number(order.otherCost || 0),
         status: order.status,
         date: order.date,
         duration_days: Number(order.durationDays || 7),
@@ -1527,6 +1612,10 @@
       return {
         ...order,
         category,
+        price: Number(order.price || 0),
+        cost: Number(order.cost || 0),
+        shippingCost: Number(order.shippingCost || 0),
+        otherCost: Number(order.otherCost || 0),
         date,
         durationDays,
         expectedDone: order.expectedDone || addDays(date, durationDays),
@@ -1584,11 +1673,11 @@
       els.confirmPasswordField.hidden = true;
       els.confirmPassword.required = false;
       els.oldPassword.required = false;
-      els.authCancel.hidden = false;
+      els.authCancel.hidden = !currentUser;
       els.authEmail.required = true;
       els.authPassword.autocomplete = "current-password";
       els.authTitle.textContent = "管理员登录";
-      els.authHint.textContent = "登录后可以新增、修改和删除订单；未登录用户只能查看。";
+      els.authHint.textContent = "登录后才能查看、新增、修改和删除订单。";
       els.authPasswordLabel.textContent = "密码";
       els.authSubmit.textContent = "登录";
 
@@ -1607,8 +1696,10 @@
       closeModal();
       await db.auth.signOut();
       currentUser = null;
+      orders = [];
       updateAuthUi();
       render();
+      showAuth("login");
     }
 
     function openPasswordChange() {
@@ -1666,6 +1757,14 @@
         currency: "CNY",
         maximumFractionDigits: 0
       }).format(value || 0);
+    }
+
+    function orderCost(order) {
+      return Number(order.cost || 0) + Number(order.shippingCost || 0) + Number(order.otherCost || 0);
+    }
+
+    function orderProfit(order) {
+      return Number(order.price || 0) - orderCost(order);
     }
 
     function visibleOrders() {
@@ -1743,6 +1842,7 @@
 
     function render() {
       renderStats();
+      renderCategoryStats();
       renderTable();
       renderPendingDetails();
       renderDoneDetails();
@@ -1754,8 +1854,49 @@
       const activeOrders = orders.filter(order => order.status !== "cancel");
       els.statCount.textContent = activeOrders.length;
       els.statRevenue.textContent = currency(activeOrders.reduce((sum, order) => sum + Number(order.price || 0), 0));
+      els.statProfit.textContent = currency(activeOrders.reduce((sum, order) => sum + orderProfit(order), 0));
       els.statShip.textContent = orders.filter(order => order.status === "paid").length;
       els.statConfirm.textContent = orders.filter(order => order.status === "shipped").length;
+    }
+
+    function renderCategoryStats() {
+      const activeOrders = orders.filter(order => order.status !== "cancel");
+      const groups = new Map(orderCategories.map(category => [category.value, {
+        category,
+        count: 0,
+        revenue: 0,
+        profit: 0
+      }]));
+
+      activeOrders.forEach(order => {
+        const key = categoryText[order.category] ? order.category : "uncategorized";
+        const group = groups.get(key);
+        group.count += 1;
+        group.revenue += Number(order.price || 0);
+        group.profit += orderProfit(order);
+      });
+
+      const list = [...groups.values()]
+        .filter(group => group.count > 0)
+        .sort((a, b) => b.revenue - a.revenue);
+
+      if (!list.length) {
+        els.categoryStats.innerHTML = '<div class="empty">暂无分类统计，登录并同步订单后会自动显示。</div>';
+        return;
+      }
+
+      els.categoryStats.innerHTML = list.map(group => `
+        <article class="category-stat">
+          <header>
+            <h3>${escapeHtml(group.category.label)}</h3>
+            <span class="pill draft">${group.count} 单</span>
+          </header>
+          <div class="mini-grid">
+            <div>成交额<strong>${currency(group.revenue)}</strong></div>
+            <div>利润<strong>${currency(group.profit)}</strong></div>
+          </div>
+        </article>
+      `).join("");
     }
 
     function renderTable() {
@@ -1775,7 +1916,10 @@
             <strong>${escapeHtml(order.buyer)}</strong>
             <div class="item-meta">${escapeHtml(order.deposit || "未记录收款")}</div>
           </td>
-          <td><strong>${currency(order.price)}</strong></td>
+          <td>
+            <strong>${currency(order.price)}</strong>
+            <div class="item-meta">利润 ${currency(orderProfit(order))}</div>
+          </td>
           <td><span class="pill ${order.status}">${statusText[order.status] || "未知"}</span></td>
           <td>
             <div>${escapeHtml(order.shipping || "未记录物流")}</div>
@@ -1872,6 +2016,8 @@
       const progressClass = remaining < 0 ? "late" : remaining <= 2 ? "warn" : "";
       const dueText = remaining < 0 ? `已超期 ${Math.abs(remaining)} 天` : remaining === 0 ? "今天到期" : `剩余 ${remaining} 天`;
       const note = order.note || "未记录备注。";
+      const cost = orderCost(order);
+      const profit = orderProfit(order);
       const progress = showProgress ? `
         <div class="timeline">
           <div class="progress-track"><div class="progress-fill ${progressClass}" style="width:${percent}%"></div></div>
@@ -1895,6 +2041,8 @@
           <div class="meta-box"><span>订单工期</span><strong>${duration} 天</strong></div>
           <div class="meta-box"><span>物流</span><strong>${escapeHtml(order.shipping || "未记录物流")}</strong></div>
           <div class="meta-box"><span>收款</span><strong>${escapeHtml(order.deposit || "未记录收款")}</strong></div>
+          <div class="meta-box"><span>成本</span><strong>${currency(cost)}</strong></div>
+          <div class="meta-box"><span>利润</span><strong>${currency(profit)}</strong></div>
           <div class="meta-box"><span>配件</span><strong>${escapeHtml(order.accessories || "未记录配件")}</strong></div>
         </div>
         ${progress}
@@ -2054,11 +2202,25 @@
 
     async function initApp() {
       await refreshSession();
-      await loadOrdersFromCloud();
+      if (currentUser) {
+        showAuth("unlocked");
+        await loadOrdersFromCloud();
+      } else {
+        orders = [];
+        render();
+        showAuth("login");
+      }
       db.auth.onAuthStateChange(async (_event, session) => {
         currentUser = session?.user || null;
         updateAuthUi();
-        render();
+        if (currentUser) {
+          showAuth("unlocked");
+          await loadOrdersFromCloud();
+        } else {
+          orders = [];
+          render();
+          showAuth("login");
+        }
       });
     }
 
