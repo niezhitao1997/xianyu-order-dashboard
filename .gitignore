@@ -1,0 +1,8 @@
+.DS_Store
+Codex/
+.env
+.env.*
+node_modules/
+dist/
+build/
+
