@@ -5,6 +5,8 @@
 - `public/index.html`：网页，已加入“同步闲鱼订单”按钮
 - `supabase/migrations/20260617000000_goofish_orders.sql`：扩展 `orders` 表字段
 - `supabase/migrations/20260618000000_add_order_category.sql`：增加订单分类字段
+- `supabase/migrations/20260618001000_require_login_for_orders.sql`：限制订单表只能登录后访问
+- `supabase/migrations/20260618002000_add_order_profit_fields.sql`：增加利润所需的成本字段
 - `supabase/functions/sync-goofish-orders/index.ts`：Supabase Edge Function，同步闲管家订单
 
 ## 1. 在 Supabase 执行 SQL
@@ -22,6 +24,22 @@
 ```sql
 -- 使用 supabase/migrations/20260618000000_add_order_category.sql 的内容
 ```
+
+公网部署前，还需要运行：
+
+```sql
+-- 使用 supabase/migrations/20260618001000_require_login_for_orders.sql 的内容
+```
+
+这个脚本会开启订单表的登录权限限制，匿名访问者不能读取或修改订单。
+
+如果要使用利润统计，还需要运行：
+
+```sql
+-- 使用 supabase/migrations/20260618002000_add_order_profit_fields.sql 的内容
+```
+
+利润由成交金额减去进货/主机成本、运费成本和其他成本计算得出。
 
 ## 2. 设置 Edge Function 环境变量
 
