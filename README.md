@@ -6,6 +6,7 @@
 
 - `public/index.html`：订单看板网页入口
 - `supabase/migrations/20260617000000_goofish_orders.sql`：Supabase 数据库字段扩展脚本
+- `supabase/migrations/20260618000000_add_order_category.sql`：订单分类字段脚本
 - `supabase/functions/sync-goofish-orders/index.ts`：同步闲管家订单的 Supabase Edge Function
 - `docs/goofish-sync-setup.md`：同步功能部署说明
 
@@ -31,7 +32,7 @@ GOOFISH_APP_SECRET=你的 app secret
 ## 后续计划
 
 - 整理订单列表和搜索体验
+- 支持按订单分类查看 Switch Lite、OLED、维修、售后等订单
 - 完善闲鱼订单同步状态
 - 增加导入、导出和统计功能
 - 接入 GitHub 做版本备份
-
