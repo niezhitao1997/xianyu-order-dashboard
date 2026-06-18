@@ -1,0 +1,2015 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Switch 二手订单看板</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7fa;
+      --panel: #ffffff;
+      --ink: #1d2430;
+      --muted: #687385;
+      --line: #d9e0ea;
+      --soft: #eef3f8;
+      --red: #e6534d;
+      --blue: #2c7be5;
+      --green: #25a46a;
+      --amber: #d38b10;
+      --violet: #7968d9;
+      --shadow: 0 16px 40px rgba(28, 39, 61, .09);
+      --radius: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr;
+    }
+
+    .sidebar-shell {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100vh;
+      width: 36px;
+      z-index: 12;
+      overflow: visible;
+    }
+
+    .sidebar-shell:hover,
+    .sidebar-shell.is-open {
+      width: min(320px, calc(100vw - 28px));
+    }
+
+    aside {
+      background: #151c26;
+      color: #eef4fb;
+      padding: 24px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+      height: 100%;
+      width: min(320px, calc(100vw - 28px));
+      transform: translateX(calc(-100% + 28px));
+      transition: transform .22s ease, box-shadow .22s ease;
+      box-shadow: 10px 0 32px rgba(0, 0, 0, 0);
+    }
+
+    aside::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 28px;
+      height: 100%;
+      background: linear-gradient(90deg, rgba(21, 28, 38, 0), rgba(255, 255, 255, .1));
+      border-right: 1px solid rgba(255, 255, 255, .12);
+    }
+
+    .sidebar-shell:hover aside,
+    .sidebar-shell.is-open aside {
+      transform: translateX(0);
+      box-shadow: 16px 0 42px rgba(10, 15, 25, .22);
+    }
+
+    .sidebar-shell:hover aside::after,
+    .sidebar-shell.is-open aside::after {
+      opacity: 0;
+    }
+
+    .brand {
+      display: grid;
+      grid-template-columns: 48px 1fr;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .switch-mark {
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      overflow: hidden;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .18);
+    }
+
+    .joy-left,
+    .joy-right {
+      position: relative;
+    }
+
+    .joy-left {
+      background: #00b8d9;
+    }
+
+    .joy-right {
+      background: #ff5f57;
+    }
+
+    .joy-left::before,
+    .joy-right::before {
+      content: "";
+      position: absolute;
+      width: 11px;
+      height: 11px;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      top: 10px;
+      left: 7px;
+    }
+
+    .joy-right::before {
+      top: 25px;
+      left: 8px;
+      background: #fff;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    .brand p {
+      margin: 4px 0 0;
+      font-size: 12px;
+      color: #aab7c6;
+    }
+
+    .nav {
+      display: grid;
+      gap: 8px;
+    }
+
+    .nav button {
+      border: 0;
+      border-radius: 8px;
+      padding: 11px 12px;
+      background: transparent;
+      color: #c7d2df;
+      text-align: left;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .nav button.active {
+      background: rgba(255, 255, 255, .1);
+      color: #fff;
+      font-weight: 700;
+      box-shadow: inset 3px 0 0 var(--red);
+    }
+
+    .side-note {
+      margin-top: auto;
+      border-top: 1px solid rgba(255, 255, 255, .12);
+      padding-top: 16px;
+      color: #aab7c6;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .side-widgets {
+      display: grid;
+      gap: 16px;
+      min-height: 0;
+      overflow-y: auto;
+      padding-right: 2px;
+    }
+
+    .side-widget {
+      display: grid;
+      gap: 10px;
+    }
+
+    .side-widget .section-title {
+      margin-bottom: 0;
+    }
+
+    .side-widget .section-title h3 {
+      color: #f3f7fd;
+      font-size: 15px;
+    }
+
+    .side-widget .todo-list li,
+    .side-widget .stock-list li {
+      border-color: rgba(255, 255, 255, .12);
+      background: rgba(255, 255, 255, .06);
+      color: #dce6f2;
+    }
+
+    .todo-list button {
+      width: 100%;
+      border: 0;
+      padding: 0;
+      background: transparent;
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .todo-list li.clickable {
+      transition: background .16s ease, border-color .16s ease, transform .16s ease;
+    }
+
+    .todo-list li.clickable:hover {
+      background: rgba(255, 255, 255, .11);
+      border-color: rgba(255, 255, 255, .25);
+      transform: translateX(2px);
+    }
+
+    .side-widget .todo-list strong,
+    .side-widget .stock-list strong {
+      color: #fff;
+    }
+
+    main {
+      padding: 24px;
+      padding-left: 52px;
+      min-width: 0;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .topbar.overview-only .actions {
+      display: none;
+    }
+
+    .topbar.overview-only[data-view="overview"] .actions {
+      display: flex;
+    }
+
+    .title h2 {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    .title p {
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      position: relative;
+    }
+
+    .btn {
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--ink);
+      padding: 8px 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      white-space: nowrap;
+    }
+
+    .btn.primary {
+      border-color: var(--red);
+      background: var(--red);
+      color: #fff;
+    }
+
+    .btn.icon {
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      justify-content: center;
+    }
+
+    .settings-menu {
+      position: relative;
+    }
+
+    .settings-panel {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      width: 188px;
+      display: none;
+      padding: 8px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 18px 42px rgba(28, 39, 61, .16);
+      z-index: 18;
+    }
+
+    .settings-panel.open {
+      display: grid;
+      gap: 6px;
+    }
+
+    .settings-panel .btn {
+      width: 100%;
+      justify-content: flex-start;
+      border-color: transparent;
+      background: transparent;
+    }
+
+    .settings-panel .btn:hover {
+      background: var(--soft);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .stat {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 15px;
+      box-shadow: 0 8px 22px rgba(28, 39, 61, .04);
+    }
+
+    .stat span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 24px;
+      line-height: 1.1;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 14px;
+    }
+
+    .view {
+      display: none;
+    }
+
+    .view.active {
+      display: grid;
+      gap: 14px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      min-width: 0;
+    }
+
+    .toolbar {
+      padding: 14px;
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) 160px 160px;
+      gap: 10px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .field label {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .field input,
+    .field select,
+    .field textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 9px 10px;
+      background: #fff;
+      color: var(--ink);
+      outline: none;
+    }
+
+    .field textarea {
+      min-height: 76px;
+      resize: vertical;
+    }
+
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(44, 123, 229, .14);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    th,
+    td {
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: middle;
+      font-size: 14px;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      background: #fbfcfe;
+    }
+
+    td {
+      word-break: break-word;
+    }
+
+    .col-order {
+      width: 25%;
+    }
+
+    .col-price {
+      width: 12%;
+    }
+
+    .col-status {
+      width: 14%;
+    }
+
+    .col-date {
+      width: 13%;
+    }
+
+    .col-actions {
+      width: 88px;
+      text-align: right;
+    }
+
+    .item-title {
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .item-meta {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 5px 9px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .pill.draft {
+      background: #eef1f5;
+      color: #5f6b7a;
+    }
+
+    .pill.paid {
+      background: #e7f2ff;
+      color: #1d68bd;
+    }
+
+    .pill.shipped {
+      background: #fff3d8;
+      color: #966206;
+    }
+
+    .pill.done {
+      background: #e6f6ee;
+      color: #13764a;
+    }
+
+    .pill.after {
+      background: #f2eafe;
+      color: #6442bd;
+    }
+
+    .pill.cancel {
+      background: #ffe8e6;
+      color: #b7342e;
+    }
+
+    .row-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 6px;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 14px;
+    }
+
+    .panel > .detail-grid {
+      padding: 14px;
+    }
+
+    .detail-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: 0 10px 24px rgba(28, 39, 61, .06);
+      padding: 16px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .detail-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .detail-head h3 {
+      margin: 0 0 5px;
+      font-size: 18px;
+      line-height: 1.25;
+    }
+
+    .detail-price {
+      font-size: 20px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .detail-meta {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .meta-box {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: #fbfcfe;
+      min-height: 66px;
+    }
+
+    .meta-box span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 5px;
+    }
+
+    .meta-box strong {
+      display: block;
+      font-size: 14px;
+      line-height: 1.35;
+      word-break: break-word;
+    }
+
+    .timeline {
+      display: grid;
+      gap: 8px;
+    }
+
+    .timeline-row {
+      display: grid;
+      grid-template-columns: 96px 1fr;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .timeline-row strong {
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    .progress-track {
+      height: 8px;
+      border-radius: 999px;
+      background: #e8edf4;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0;
+      border-radius: inherit;
+      background: var(--green);
+    }
+
+    .progress-fill.warn {
+      background: var(--amber);
+    }
+
+    .progress-fill.late {
+      background: var(--red);
+    }
+
+    .detail-note {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+      margin: 0;
+    }
+
+    .section-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .section-title h3 {
+      margin: 0;
+      font-size: 15px;
+    }
+
+    .todo-list,
+    .stock-list {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .todo-list li,
+    .stock-list li {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: #fbfcfe;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .todo-list strong,
+    .stock-list strong {
+      display: block;
+      margin-bottom: 3px;
+    }
+
+    .empty {
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(9, 16, 25, .48);
+      z-index: 20;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal {
+      width: min(720px, 100%);
+      max-height: min(760px, 92vh);
+      overflow: auto;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 24px 70px rgba(0, 0, 0, .26);
+    }
+
+    .modal header {
+      position: sticky;
+      top: 0;
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+      padding: 15px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      z-index: 1;
+    }
+
+    .modal h3 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .form-grid {
+      padding: 18px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 13px;
+    }
+
+    .form-grid .wide {
+      grid-column: 1 / -1;
+    }
+
+    .modal footer {
+      border-top: 1px solid var(--line);
+      padding: 14px 18px;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      position: sticky;
+      bottom: 0;
+      background: #fff;
+    }
+
+    .hidden-file {
+      display: none;
+    }
+
+    body.locked .app {
+      filter: blur(7px);
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .auth-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(245, 247, 250, .94);
+      backdrop-filter: blur(12px);
+    }
+
+    body.locked .auth-screen {
+      display: flex;
+    }
+
+    .auth-card {
+      width: min(420px, 100%);
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 24px 70px rgba(28, 39, 61, .18);
+      padding: 22px;
+    }
+
+    .auth-card .switch-mark {
+      margin-bottom: 14px;
+    }
+
+    .auth-card h2 {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    .auth-card p {
+      margin: 8px 0 18px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .auth-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .auth-error {
+      min-height: 20px;
+      margin-top: 10px;
+      color: var(--red);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    @media (max-width: 1040px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      .stats {
+        grid-template-columns: repeat(2, minmax(150px, 1fr));
+      }
+
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+
+      main {
+        padding-left: 52px;
+      }
+    }
+
+    @media (max-width: 720px) {
+      main {
+        padding: 16px;
+        padding-left: 44px;
+      }
+
+      .topbar {
+        display: grid;
+      }
+
+      .actions {
+        justify-content: stretch;
+      }
+
+      .btn {
+        flex: 1;
+        justify-content: center;
+      }
+
+      .stats,
+      .toolbar,
+      .detail-meta,
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .table-wrap {
+        overflow-x: auto;
+      }
+
+      table {
+        min-width: 820px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="sidebar-shell">
+    <aside>
+      <div class="brand">
+        <div class="switch-mark" aria-hidden="true">
+          <div class="joy-left"></div>
+          <div class="joy-right"></div>
+        </div>
+        <div>
+          <h1>Switch 订单看板</h1>
+          <p>闲鱼二手交易管理</p>
+        </div>
+      </div>
+      <div class="nav" aria-label="页面导航">
+        <button class="active" type="button" id="navOverview" data-view="overview">订单总览</button>
+        <button type="button" id="navPending">待处理</button>
+        <button type="button" id="navDone">已完成</button>
+      </div>
+      <div class="side-widgets">
+        <section class="side-widget">
+          <div class="section-title">
+            <h3>今日待办</h3>
+            <span class="pill draft" id="todoCount">0 项</span>
+          </div>
+          <ul class="todo-list" id="todoList"></ul>
+        </section>
+        <section class="side-widget">
+          <div class="section-title">
+            <h3>库存和配件提醒</h3>
+          </div>
+          <ul class="stock-list" id="stockList"></ul>
+        </section>
+      </div>
+      <div class="side-note">
+        数据保存在当前浏览器里，适合个人管理闲鱼订单。换电脑或清理浏览器数据前，可以先导出备份。
+      </div>
+    </aside>
+    </div>
+
+    <main>
+      <div class="topbar overview-only" data-view="overview">
+        <div class="title">
+          <h2>订单总览</h2>
+          <p>跟踪二手 Switch、游戏卡、配件的收款、发货、售后和备注。</p>
+        </div>
+        <div class="actions">
+          <button class="btn primary" type="button" id="addBtn" hidden>新增订单</button>
+          <div class="settings-menu">
+            <button class="btn icon" type="button" id="settingsBtn" aria-label="账号设置" aria-expanded="false">⚙</button>
+            <div class="settings-panel" id="settingsPanel">
+              <button class="btn" type="button" id="syncGoofishBtn" hidden>同步闲鱼订单</button>
+              <button class="btn" type="button" id="importBtn" hidden>导入备份</button>
+              <button class="btn" type="button" id="exportBtn">导出备份</button>
+              <button class="btn" type="button" id="passwordBtn">管理员登录</button>
+              <button class="btn" type="button" id="lockBtn" hidden>退出登录</button>
+            </div>
+          </div>
+          <input class="hidden-file" id="importFile" type="file" accept="application/json">
+        </div>
+      </div>
+
+      <div class="workspace">
+        <section class="view active" id="overviewView">
+          <section class="stats" aria-label="订单统计">
+            <div class="stat">
+              <span>订单总数</span>
+              <strong id="statCount">0</strong>
+            </div>
+            <div class="stat">
+              <span>预计成交额</span>
+              <strong id="statRevenue">¥0</strong>
+            </div>
+            <div class="stat">
+              <span>待发货</span>
+              <strong id="statShip">0</strong>
+            </div>
+            <div class="stat">
+              <span>待确认收货</span>
+              <strong id="statConfirm">0</strong>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="toolbar">
+              <div class="field">
+                <label for="searchInput">搜索</label>
+                <input id="searchInput" type="search" placeholder="买家、订单号、商品、备注">
+              </div>
+              <div class="field">
+                <label for="statusFilter">状态</label>
+                <select id="statusFilter">
+                  <option value="all">全部状态</option>
+                  <option value="draft">沟通中</option>
+                  <option value="paid">已付款待发货</option>
+                  <option value="shipped">已发货待确认</option>
+                  <option value="done">已完成</option>
+                  <option value="after">售后中</option>
+                  <option value="cancel">已取消</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="sortSelect">排序</label>
+                <select id="sortSelect">
+                  <option value="updated">最近更新</option>
+                  <option value="date">交易日期</option>
+                  <option value="price">金额最高</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th class="col-order">订单</th>
+                    <th>买家</th>
+                    <th class="col-price">金额</th>
+                    <th class="col-status">状态</th>
+                    <th>物流/配件</th>
+                    <th class="col-date">日期</th>
+                    <th class="col-actions">操作</th>
+                  </tr>
+                </thead>
+                <tbody id="orderBody"></tbody>
+              </table>
+            </div>
+            <div class="empty" id="emptyState" hidden>没有找到订单。可以调整筛选，或新增一笔订单。</div>
+          </section>
+        </section>
+
+        <section class="view" id="pendingView">
+          <section class="stats" aria-label="待处理统计">
+            <div class="stat">
+              <span>未完成订单</span>
+              <strong id="pendingCount">0</strong>
+            </div>
+            <div class="stat">
+              <span>待发货</span>
+              <strong id="pendingShip">0</strong>
+            </div>
+            <div class="stat">
+              <span>售后中</span>
+              <strong id="pendingAfter">0</strong>
+            </div>
+            <div class="stat">
+              <span>临近到期</span>
+              <strong id="pendingDue">0</strong>
+            </div>
+          </section>
+          <section class="detail-grid" id="pendingDetails"></section>
+          <div class="empty panel" id="pendingEmpty" hidden>当前没有未完成订单。</div>
+        </section>
+
+        <section class="view" id="doneView">
+          <section class="panel">
+            <div class="toolbar">
+              <div class="field">
+                <label for="doneSearchInput">搜索已完成</label>
+                <input id="doneSearchInput" type="search" placeholder="买家、订单号、商品、备注">
+              </div>
+              <div class="field">
+                <label for="doneSortSelect">排序</label>
+                <select id="doneSortSelect">
+                  <option value="date">完成日期</option>
+                  <option value="price">金额最高</option>
+                  <option value="updated">最近更新</option>
+                </select>
+              </div>
+            </div>
+            <section class="detail-grid" id="doneDetails"></section>
+            <div class="empty" id="doneEmpty" hidden>还没有已完成订单。</div>
+          </section>
+        </section>
+
+        <section class="view" id="orderDetailView">
+          <section class="detail-grid" id="selectedOrderDetail"></section>
+          <div class="empty panel" id="selectedOrderEmpty" hidden>没有找到这笔订单。</div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <form class="modal" id="orderForm">
+      <header>
+        <h3 id="modalTitle">新增订单</h3>
+        <button class="btn icon" type="button" id="closeBtn" aria-label="关闭">×</button>
+      </header>
+      <div class="form-grid">
+        <div class="field">
+          <label for="itemName">商品</label>
+          <input id="itemName" name="itemName" required placeholder="Switch OLED 白色">
+        </div>
+        <div class="field">
+          <label for="orderNo">订单号</label>
+          <input id="orderNo" name="orderNo" placeholder="闲鱼订单号">
+        </div>
+        <div class="field">
+          <label for="buyer">买家</label>
+          <input id="buyer" name="buyer" required placeholder="买家昵称">
+        </div>
+        <div class="field">
+          <label for="price">成交金额</label>
+          <input id="price" name="price" type="number" min="0" step="1" required placeholder="1500">
+        </div>
+        <div class="field">
+          <label for="status">状态</label>
+          <select id="status" name="status" required>
+            <option value="draft">沟通中</option>
+            <option value="paid">已付款待发货</option>
+            <option value="shipped">已发货待确认</option>
+            <option value="done">已完成</option>
+            <option value="after">售后中</option>
+            <option value="cancel">已取消</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="date">交易日期</label>
+          <input id="date" name="date" type="date" required>
+        </div>
+        <div class="field">
+          <label for="durationDays">订单工期</label>
+          <input id="durationDays" name="durationDays" type="number" min="1" step="1" value="7" required>
+        </div>
+        <div class="field">
+          <label for="expectedDone">预计完成时间</label>
+          <input id="expectedDone" name="expectedDone" type="date" readonly>
+        </div>
+        <div class="field">
+          <label for="shipping">物流</label>
+          <input id="shipping" name="shipping" placeholder="顺丰 SF123456 / 未发货">
+        </div>
+        <div class="field">
+          <label for="deposit">定金/尾款</label>
+          <input id="deposit" name="deposit" placeholder="已收 100 定金，尾款 1400">
+        </div>
+        <div class="field wide">
+          <label for="accessories">配件清单</label>
+          <input id="accessories" name="accessories" placeholder="主机、底座、手柄、充电器、收纳包、游戏卡">
+        </div>
+        <div class="field wide">
+          <label for="note">备注</label>
+          <textarea id="note" name="note" placeholder="成色、议价记录、发货注意事项、售后约定"></textarea>
+        </div>
+      </div>
+      <footer>
+        <button class="btn" type="button" id="deleteBtn">删除</button>
+        <div class="actions">
+          <button class="btn" type="button" id="cancelBtn">取消</button>
+          <button class="btn primary" type="submit">保存订单</button>
+        </div>
+      </footer>
+    </form>
+  </div>
+
+  <div class="auth-screen" id="authScreen" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+    <form class="auth-card" id="authForm">
+      <div class="switch-mark" aria-hidden="true">
+        <div class="joy-left"></div>
+        <div class="joy-right"></div>
+      </div>
+      <h2 id="authTitle">登录订单看板</h2>
+      <p id="authHint">登录后可以新增、修改和删除订单；未登录用户只能查看。</p>
+      <div class="field" id="oldPasswordField" hidden>
+        <label for="oldPassword">当前密码</label>
+        <input id="oldPassword" name="oldPassword" type="password" autocomplete="current-password">
+      </div>
+      <div class="field" id="authEmailField">
+        <label for="authEmail">邮箱</label>
+        <input id="authEmail" name="authEmail" type="email" autocomplete="email" required placeholder="你的 Supabase 登录邮箱">
+      </div>
+      <div class="field">
+        <label for="authPassword" id="authPasswordLabel">密码</label>
+        <input id="authPassword" name="authPassword" type="password" autocomplete="current-password" required minlength="4">
+      </div>
+      <div class="field" id="confirmPasswordField" hidden>
+        <label for="confirmPassword">再次输入</label>
+        <input id="confirmPassword" name="confirmPassword" type="password" autocomplete="new-password" minlength="4">
+      </div>
+      <div class="auth-error" id="authError" aria-live="polite"></div>
+      <div class="auth-actions">
+        <button class="btn primary" type="submit" id="authSubmit">进入</button>
+        <button class="btn" type="button" id="authCancel" hidden>取消</button>
+      </div>
+    </form>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const supabaseUrl = "https://jdssfavqzwgxkenpzrmk.supabase.co";
+    const supabaseKey = "sb_publishable_FFieb7H2WGgaLCP6mq0utw_eQWYpupZ";
+    const db = supabase.createClient(supabaseUrl, supabaseKey);
+    const statusText = {
+      draft: "沟通中",
+      paid: "已付款待发货",
+      shipped: "已发货待确认",
+      done: "已完成",
+      after: "售后中",
+      cancel: "已取消"
+    };
+
+    const sampleOrders = [
+      {
+        id: crypto.randomUUID(),
+        itemName: "Switch OLED 白色套装",
+        orderNo: "XY20260617001",
+        buyer: "小陈想要马车",
+        price: 1580,
+        status: "paid",
+        date: "2026-06-17",
+        shipping: "未发货",
+        deposit: "已全款",
+        accessories: "主机、底座、Joy-Con、充电器、HDMI、收纳包",
+        note: "买家要求今晚前拍发货视频，屏幕贴膜有轻微划痕已说明。",
+        updatedAt: Date.now() - 1000 * 60 * 12
+      },
+      {
+        id: crypto.randomUUID(),
+        itemName: "塞尔达 王国之泪 游戏卡",
+        orderNo: "XY20260616008",
+        buyer: "海边林克",
+        price: 238,
+        status: "shipped",
+        date: "2026-06-16",
+        shipping: "中通 ZT77881234",
+        deposit: "已全款",
+        accessories: "卡带、盒子",
+        note: "已拍包装照片，等待买家确认收货。",
+        updatedAt: Date.now() - 1000 * 60 * 60 * 5
+      },
+      {
+        id: crypto.randomUUID(),
+        itemName: "Switch Pro 手柄",
+        orderNo: "XY20260614003",
+        buyer: "Nora",
+        price: 255,
+        status: "done",
+        date: "2026-06-14",
+        shipping: "顺丰 SF10293847",
+        deposit: "已全款",
+        accessories: "手柄、数据线",
+        note: "买家已确认收货。",
+        updatedAt: Date.now() - 1000 * 60 * 60 * 22
+      }
+    ];
+
+    let orders = [];
+    let editingId = null;
+    let currentView = "overview";
+    let selectedOrderId = null;
+    let currentUser = null;
+
+    const els = {
+      topbar: document.querySelector(".topbar"),
+      title: document.querySelector(".title h2"),
+      subtitle: document.querySelector(".title p"),
+      navOverview: document.querySelector("#navOverview"),
+      navPending: document.querySelector("#navPending"),
+      navDone: document.querySelector("#navDone"),
+      settingsBtn: document.querySelector("#settingsBtn"),
+      settingsPanel: document.querySelector("#settingsPanel"),
+      syncGoofishBtn: document.querySelector("#syncGoofishBtn"),
+      overviewView: document.querySelector("#overviewView"),
+      pendingView: document.querySelector("#pendingView"),
+      doneView: document.querySelector("#doneView"),
+      orderDetailView: document.querySelector("#orderDetailView"),
+      selectedOrderDetail: document.querySelector("#selectedOrderDetail"),
+      selectedOrderEmpty: document.querySelector("#selectedOrderEmpty"),
+      orderBody: document.querySelector("#orderBody"),
+      emptyState: document.querySelector("#emptyState"),
+      searchInput: document.querySelector("#searchInput"),
+      statusFilter: document.querySelector("#statusFilter"),
+      sortSelect: document.querySelector("#sortSelect"),
+      doneSearchInput: document.querySelector("#doneSearchInput"),
+      doneSortSelect: document.querySelector("#doneSortSelect"),
+      statCount: document.querySelector("#statCount"),
+      statRevenue: document.querySelector("#statRevenue"),
+      statShip: document.querySelector("#statShip"),
+      statConfirm: document.querySelector("#statConfirm"),
+      pendingCount: document.querySelector("#pendingCount"),
+      pendingShip: document.querySelector("#pendingShip"),
+      pendingAfter: document.querySelector("#pendingAfter"),
+      pendingDue: document.querySelector("#pendingDue"),
+      pendingDetails: document.querySelector("#pendingDetails"),
+      pendingEmpty: document.querySelector("#pendingEmpty"),
+      doneDetails: document.querySelector("#doneDetails"),
+      doneEmpty: document.querySelector("#doneEmpty"),
+      todoList: document.querySelector("#todoList"),
+      todoCount: document.querySelector("#todoCount"),
+      stockList: document.querySelector("#stockList"),
+      sidebarShell: document.querySelector(".sidebar-shell"),
+      modalBackdrop: document.querySelector("#modalBackdrop"),
+      orderForm: document.querySelector("#orderForm"),
+      modalTitle: document.querySelector("#modalTitle"),
+      deleteBtn: document.querySelector("#deleteBtn"),
+      importFile: document.querySelector("#importFile"),
+      authForm: document.querySelector("#authForm"),
+      authTitle: document.querySelector("#authTitle"),
+      authHint: document.querySelector("#authHint"),
+      authEmail: document.querySelector("#authEmail"),
+      authPassword: document.querySelector("#authPassword"),
+      authPasswordLabel: document.querySelector("#authPasswordLabel"),
+      confirmPassword: document.querySelector("#confirmPassword"),
+      confirmPasswordField: document.querySelector("#confirmPasswordField"),
+      oldPassword: document.querySelector("#oldPassword"),
+      oldPasswordField: document.querySelector("#oldPasswordField"),
+      authError: document.querySelector("#authError"),
+      authSubmit: document.querySelector("#authSubmit"),
+      authCancel: document.querySelector("#authCancel")
+    };
+
+    let authMode = "login";
+
+    document.querySelector("#addBtn").addEventListener("click", () => {
+      if (!requireAdmin()) return;
+      openModal();
+    });
+    document.querySelector("#closeBtn").addEventListener("click", closeModal);
+    document.querySelector("#cancelBtn").addEventListener("click", closeModal);
+    document.querySelector("#exportBtn").addEventListener("click", exportBackup);
+    els.syncGoofishBtn.addEventListener("click", syncGoofishOrders);
+    document.querySelector("#importBtn").addEventListener("click", () => {
+      closeSettings();
+      if (!requireAdmin()) return;
+      els.importFile.click();
+    });
+    document.querySelector("#lockBtn").addEventListener("click", () => {
+      closeSettings();
+      lockApp();
+    });
+    document.querySelector("#passwordBtn").addEventListener("click", () => {
+      closeSettings();
+      openPasswordChange();
+    });
+    els.settingsBtn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      toggleSettings();
+    });
+    els.settingsPanel.addEventListener("click", (event) => event.stopPropagation());
+    document.addEventListener("click", closeSettings);
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeSettings();
+    });
+    els.navOverview.addEventListener("click", () => setView("overview"));
+    els.navPending.addEventListener("click", () => setView("pending"));
+    els.navDone.addEventListener("click", () => setView("done"));
+    els.todoList.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-detail]");
+      if (!button) return;
+      showOrderDetail(button.dataset.detail);
+    });
+
+    els.importFile.addEventListener("change", importBackup);
+    els.searchInput.addEventListener("input", render);
+    els.statusFilter.addEventListener("change", render);
+    els.sortSelect.addEventListener("change", render);
+    els.doneSearchInput.addEventListener("input", render);
+    els.doneSortSelect.addEventListener("change", render);
+    els.orderForm.elements.date.addEventListener("input", syncExpectedDone);
+    els.orderForm.elements.durationDays.addEventListener("input", syncExpectedDone);
+    els.authCancel.addEventListener("click", () => showAuth("unlocked"));
+    els.sidebarShell.addEventListener("pointerenter", () => els.sidebarShell.classList.add("is-open"));
+    els.sidebarShell.addEventListener("pointerleave", () => els.sidebarShell.classList.remove("is-open"));
+
+    els.modalBackdrop.addEventListener("click", (event) => {
+      if (event.target === els.modalBackdrop) closeModal();
+    });
+
+    els.orderForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!requireAdmin()) return;
+      const data = Object.fromEntries(new FormData(els.orderForm).entries());
+      const durationDays = Math.max(1, Number(data.durationDays || 7));
+      const nextOrder = normalizeOrder({
+        ...data,
+        price: Number(data.price || 0),
+        durationDays,
+        expectedDone: data.expectedDone || addDays(data.date, durationDays),
+        id: editingId || crypto.randomUUID(),
+        updatedAt: Date.now()
+      });
+
+      await saveOrderToCloud(nextOrder);
+      closeModal();
+      await loadOrdersFromCloud();
+    });
+
+    els.authForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      els.authError.textContent = "";
+      const email = els.authEmail.value.trim();
+      const password = els.authPassword.value;
+
+      try {
+        const { error } = await db.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        await refreshSession();
+        showAuth("unlocked");
+        render();
+      } catch (error) {
+        els.authError.textContent = error.message || "登录失败，请检查邮箱和密码。";
+      }
+    });
+
+    els.deleteBtn.addEventListener("click", async () => {
+      if (!requireAdmin()) return;
+      if (!editingId) return closeModal();
+      const ok = confirm("确定删除这笔订单吗？");
+      if (!ok) return;
+      const { error } = await db.from("orders").delete().eq("id", editingId);
+      if (error) {
+        alert(`删除失败：${error.message}`);
+        return;
+      }
+      closeModal();
+      await loadOrdersFromCloud();
+    });
+
+    async function loadOrdersFromCloud() {
+      const { data, error } = await db
+        .from("orders")
+        .select("*")
+        .order("updated_at", { ascending: false });
+
+      if (error) {
+        alert(`云端订单读取失败：${error.message}`);
+        orders = [];
+      } else {
+        orders = (data || []).map(fromDbOrder);
+      }
+      render();
+    }
+
+    async function saveOrderToCloud(order) {
+      const payload = toDbOrder(order);
+      const request = editingId
+        ? db.from("orders").update(payload).eq("id", editingId)
+        : db.from("orders").insert(payload);
+      const { error } = await request;
+      if (error) {
+        alert(`保存失败：${error.message}`);
+        throw error;
+      }
+    }
+
+    function fromDbOrder(row) {
+      return normalizeOrder({
+        id: row.id,
+        itemName: row.item_name,
+        orderNo: row.order_no,
+        buyer: row.buyer,
+        price: Number(row.price || 0),
+        status: row.status,
+        date: row.date,
+        durationDays: row.duration_days,
+        expectedDone: row.expected_done,
+        shipping: row.shipping,
+        deposit: row.deposit,
+        accessories: row.accessories,
+        note: row.note,
+        updatedAt: row.updated_at ? new Date(row.updated_at).getTime() : Date.now()
+      });
+    }
+
+    function toDbOrder(order) {
+      return {
+        item_name: order.itemName,
+        order_no: order.orderNo || null,
+        buyer: order.buyer,
+        price: Number(order.price || 0),
+        status: order.status,
+        date: order.date,
+        duration_days: Number(order.durationDays || 7),
+        expected_done: order.expectedDone || addDays(order.date, order.durationDays || 7),
+        shipping: order.shipping || null,
+        deposit: order.deposit || null,
+        accessories: order.accessories || null,
+        note: order.note || null,
+        updated_at: new Date().toISOString()
+      };
+    }
+
+    function toggleSettings() {
+      const open = !els.settingsPanel.classList.contains("open");
+      els.settingsPanel.classList.toggle("open", open);
+      els.settingsBtn.setAttribute("aria-expanded", String(open));
+    }
+
+    function closeSettings() {
+      els.settingsPanel.classList.remove("open");
+      els.settingsBtn.setAttribute("aria-expanded", "false");
+    }
+
+    function normalizeOrder(order) {
+      const durationDays = Math.max(1, Number(order.durationDays || 7));
+      const date = order.date || new Date().toISOString().slice(0, 10);
+      return {
+        ...order,
+        date,
+        durationDays,
+        expectedDone: order.expectedDone || addDays(date, durationDays),
+        updatedAt: order.updatedAt || Date.now()
+      };
+    }
+
+    function addDays(dateValue, days) {
+      if (!dateValue) return "";
+      const date = new Date(`${dateValue}T00:00:00`);
+      if (Number.isNaN(date.getTime())) return "";
+      date.setDate(date.getDate() + Number(days || 0));
+      return date.toISOString().slice(0, 10);
+    }
+
+    function daysBetween(startValue, endValue) {
+      const start = new Date(`${startValue}T00:00:00`);
+      const end = new Date(`${endValue}T00:00:00`);
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0;
+      return Math.round((end - start) / 86400000);
+    }
+
+    function todayString() {
+      return new Date().toISOString().slice(0, 10);
+    }
+
+    function syncExpectedDone() {
+      const date = els.orderForm.elements.date.value;
+      const durationDays = Math.max(1, Number(els.orderForm.elements.durationDays.value || 7));
+      els.orderForm.elements.durationDays.value = durationDays;
+      els.orderForm.elements.expectedDone.value = addDays(date, durationDays);
+    }
+
+    function showAuth(mode) {
+      if (mode === "unlocked") {
+        document.body.classList.remove("locked");
+        return;
+      }
+
+      authMode = mode;
+      document.body.classList.add("locked");
+      els.authForm.reset();
+      els.authError.textContent = "";
+      els.oldPasswordField.hidden = true;
+      els.confirmPasswordField.hidden = true;
+      els.confirmPassword.required = false;
+      els.oldPassword.required = false;
+      els.authCancel.hidden = false;
+      els.authEmail.required = true;
+      els.authPassword.autocomplete = "current-password";
+      els.authTitle.textContent = "管理员登录";
+      els.authHint.textContent = "登录后可以新增、修改和删除订单；未登录用户只能查看。";
+      els.authPasswordLabel.textContent = "密码";
+      els.authSubmit.textContent = "登录";
+
+      setTimeout(() => {
+        els.authEmail.focus();
+      }, 30);
+    }
+
+    async function refreshSession() {
+      const { data } = await db.auth.getUser();
+      currentUser = data.user || null;
+      updateAuthUi();
+    }
+
+    async function lockApp() {
+      closeModal();
+      await db.auth.signOut();
+      currentUser = null;
+      updateAuthUi();
+      render();
+    }
+
+    function openPasswordChange() {
+      closeModal();
+      showAuth("login");
+    }
+
+    function requireAdmin() {
+      if (currentUser) return true;
+      showAuth("login");
+      return false;
+    }
+
+    function updateAuthUi() {
+      document.querySelector("#addBtn").hidden = !currentUser;
+      els.syncGoofishBtn.hidden = !currentUser;
+      document.querySelector("#importBtn").hidden = !currentUser;
+      document.querySelector("#passwordBtn").textContent = currentUser ? "切换账号" : "管理员登录";
+      document.querySelector("#lockBtn").hidden = !currentUser;
+    }
+
+    async function syncGoofishOrders() {
+      closeSettings();
+      if (!requireAdmin()) return;
+      els.syncGoofishBtn.disabled = true;
+      els.syncGoofishBtn.textContent = "同步中...";
+      try {
+        const { data: sessionData } = await db.auth.getSession();
+        const token = sessionData.session?.access_token;
+        if (!token) throw new Error("请先登录管理员账号。");
+
+        const response = await fetch(`${supabaseUrl}/functions/v1/sync-goofish-orders`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ days: 30 })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || "同步失败");
+        await loadOrdersFromCloud();
+        alert(`同步完成：新增/更新 ${result.upserted || 0} 笔订单。`);
+      } catch (error) {
+        alert(`同步失败：${error.message}`);
+      } finally {
+        els.syncGoofishBtn.disabled = false;
+        els.syncGoofishBtn.textContent = "同步闲鱼订单";
+      }
+    }
+
+    function currency(value) {
+      return new Intl.NumberFormat("zh-CN", {
+        style: "currency",
+        currency: "CNY",
+        maximumFractionDigits: 0
+      }).format(value || 0);
+    }
+
+    function visibleOrders() {
+      const query = els.searchInput.value.trim().toLowerCase();
+      const status = els.statusFilter.value;
+      const sort = els.sortSelect.value;
+
+      return orders
+        .filter(order => status === "all" || order.status === status)
+        .filter(order => {
+          if (!query) return true;
+          return [
+            order.itemName,
+            order.orderNo,
+            order.buyer,
+            order.shipping,
+            order.accessories,
+            order.note
+          ].join(" ").toLowerCase().includes(query);
+        })
+        .sort((a, b) => {
+          if (sort === "price") return Number(b.price) - Number(a.price);
+          if (sort === "date") return String(b.date).localeCompare(String(a.date));
+          return Number(b.updatedAt || 0) - Number(a.updatedAt || 0);
+        });
+    }
+
+    function setView(view) {
+      currentView = view;
+      if (view !== "detail") selectedOrderId = null;
+      const config = {
+        overview: {
+          title: "订单总览",
+          subtitle: "跟踪二手 Switch、游戏卡、配件的收款、发货、售后和备注。"
+        },
+        pending: {
+          title: "待处理订单",
+          subtitle: "集中查看未完成订单的工期、预计完成时间、物流、配件和沟通备注。"
+        },
+        done: {
+          title: "已完成订单",
+          subtitle: "复盘已经完成的成交记录、金额、买家和售后备注。"
+        },
+        detail: {
+          title: "待办详情",
+          subtitle: "查看这笔待办订单的发货时间、工期、物流、收款、配件和备注。"
+        }
+      };
+
+      els.title.textContent = config[view].title;
+      els.subtitle.textContent = config[view].subtitle;
+      els.topbar.dataset.view = view;
+      if (view !== "overview") closeSettings();
+      [
+        [els.navOverview, "overview"],
+        [els.navPending, "pending"],
+        [els.navDone, "done"]
+      ].forEach(([button, name]) => button.classList.toggle("active", name === view));
+      [
+        [els.overviewView, "overview"],
+        [els.pendingView, "pending"],
+        [els.doneView, "done"],
+        [els.orderDetailView, "detail"]
+      ].forEach(([section, name]) => section.classList.toggle("active", name === view));
+      render();
+    }
+
+    function showOrderDetail(orderId) {
+      selectedOrderId = orderId;
+      setView("detail");
+    }
+
+    function render() {
+      renderStats();
+      renderTable();
+      renderPendingDetails();
+      renderDoneDetails();
+      renderSelectedOrderDetail();
+      renderInsights();
+    }
+
+    function renderStats() {
+      const activeOrders = orders.filter(order => order.status !== "cancel");
+      els.statCount.textContent = activeOrders.length;
+      els.statRevenue.textContent = currency(activeOrders.reduce((sum, order) => sum + Number(order.price || 0), 0));
+      els.statShip.textContent = orders.filter(order => order.status === "paid").length;
+      els.statConfirm.textContent = orders.filter(order => order.status === "shipped").length;
+    }
+
+    function renderTable() {
+      const list = visibleOrders();
+      els.orderBody.innerHTML = "";
+      els.emptyState.hidden = list.length > 0;
+
+      list.forEach(order => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>
+            <div class="item-title">${escapeHtml(order.itemName)}</div>
+            <div class="item-meta">${escapeHtml(order.orderNo || "未填订单号")}</div>
+          </td>
+          <td>
+            <strong>${escapeHtml(order.buyer)}</strong>
+            <div class="item-meta">${escapeHtml(order.deposit || "未记录收款")}</div>
+          </td>
+          <td><strong>${currency(order.price)}</strong></td>
+          <td><span class="pill ${order.status}">${statusText[order.status] || "未知"}</span></td>
+          <td>
+            <div>${escapeHtml(order.shipping || "未记录物流")}</div>
+            <div class="item-meta">${escapeHtml(order.accessories || "未记录配件")}</div>
+          </td>
+          <td>
+            <div>${escapeHtml(order.date || "")}</div>
+            <div class="item-meta">预计 ${escapeHtml(order.expectedDone || "")}</div>
+          </td>
+          <td class="col-actions">
+            <div class="row-actions">
+              ${currentUser ? `<button class="btn icon" type="button" data-edit="${order.id}" aria-label="编辑">✎</button>` : ""}
+            </div>
+          </td>
+        `;
+        els.orderBody.appendChild(row);
+      });
+
+      els.orderBody.querySelectorAll("[data-edit]").forEach(button => {
+        button.addEventListener("click", () => openModal(button.dataset.edit));
+      });
+    }
+
+    function pendingOrders() {
+      return orders
+        .filter(order => !["done", "cancel"].includes(order.status))
+        .sort((a, b) => String(a.expectedDone || "").localeCompare(String(b.expectedDone || "")));
+    }
+
+    function renderPendingDetails() {
+      const list = pendingOrders();
+      const dueSoon = list.filter(order => daysBetween(todayString(), order.expectedDone) <= 2).length;
+      els.pendingCount.textContent = list.length;
+      els.pendingShip.textContent = list.filter(order => order.status === "paid").length;
+      els.pendingAfter.textContent = list.filter(order => order.status === "after").length;
+      els.pendingDue.textContent = dueSoon;
+      els.pendingDetails.innerHTML = "";
+      els.pendingEmpty.hidden = list.length > 0;
+
+      list.forEach(order => {
+        const card = document.createElement("article");
+        card.className = "detail-card";
+        card.innerHTML = detailCardHTML(order, true);
+        els.pendingDetails.appendChild(card);
+      });
+
+      els.pendingDetails.querySelectorAll("[data-edit]").forEach(button => {
+        button.addEventListener("click", () => openModal(button.dataset.edit));
+      });
+    }
+
+    function renderDoneDetails() {
+      const query = els.doneSearchInput.value.trim().toLowerCase();
+      const sort = els.doneSortSelect.value;
+      const list = orders
+        .filter(order => order.status === "done")
+        .filter(order => {
+          if (!query) return true;
+          return [
+            order.itemName,
+            order.orderNo,
+            order.buyer,
+            order.shipping,
+            order.accessories,
+            order.note
+          ].join(" ").toLowerCase().includes(query);
+        })
+        .sort((a, b) => {
+          if (sort === "price") return Number(b.price) - Number(a.price);
+          if (sort === "updated") return Number(b.updatedAt || 0) - Number(a.updatedAt || 0);
+          return String(b.date).localeCompare(String(a.date));
+        });
+
+      els.doneDetails.innerHTML = "";
+      els.doneEmpty.hidden = list.length > 0;
+      list.forEach(order => {
+        const card = document.createElement("article");
+        card.className = "detail-card";
+        card.innerHTML = detailCardHTML(order, false);
+        els.doneDetails.appendChild(card);
+      });
+
+      els.doneDetails.querySelectorAll("[data-edit]").forEach(button => {
+        button.addEventListener("click", () => openModal(button.dataset.edit));
+      });
+    }
+
+    function detailCardHTML(order, showProgress) {
+      const elapsed = Math.max(0, daysBetween(order.date, todayString()));
+      const duration = Math.max(1, Number(order.durationDays || 7));
+      const remaining = daysBetween(todayString(), order.expectedDone);
+      const percent = Math.max(4, Math.min(100, Math.round((elapsed / duration) * 100)));
+      const progressClass = remaining < 0 ? "late" : remaining <= 2 ? "warn" : "";
+      const dueText = remaining < 0 ? `已超期 ${Math.abs(remaining)} 天` : remaining === 0 ? "今天到期" : `剩余 ${remaining} 天`;
+      const note = order.note || "未记录备注。";
+      const progress = showProgress ? `
+        <div class="timeline">
+          <div class="progress-track"><div class="progress-fill ${progressClass}" style="width:${percent}%"></div></div>
+          <div class="timeline-row"><span>工期进度</span><strong>${elapsed} / ${duration} 天 · ${dueText}</strong></div>
+        </div>
+      ` : "";
+
+      return `
+        <div class="detail-head">
+          <div>
+            <h3>${escapeHtml(order.itemName)}</h3>
+            <div class="item-meta">${escapeHtml(order.orderNo || "未填订单号")} · ${escapeHtml(order.buyer)}</div>
+          </div>
+          <div class="detail-price">${currency(order.price)}</div>
+        </div>
+        <div><span class="pill ${order.status}">${statusText[order.status] || "未知"}</span></div>
+        <div class="detail-meta">
+          <div class="meta-box"><span>交易日期</span><strong>${escapeHtml(order.date || "")}</strong></div>
+          <div class="meta-box"><span>预计完成</span><strong>${escapeHtml(order.expectedDone || "")}</strong></div>
+          <div class="meta-box"><span>订单工期</span><strong>${duration} 天</strong></div>
+          <div class="meta-box"><span>物流</span><strong>${escapeHtml(order.shipping || "未记录物流")}</strong></div>
+          <div class="meta-box"><span>收款</span><strong>${escapeHtml(order.deposit || "未记录收款")}</strong></div>
+          <div class="meta-box"><span>配件</span><strong>${escapeHtml(order.accessories || "未记录配件")}</strong></div>
+        </div>
+        ${progress}
+        <p class="detail-note">${escapeHtml(note)}</p>
+        ${currentUser ? `<div class="row-actions">
+          <button class="btn" type="button" data-edit="${order.id}">编辑订单</button>
+        </div>` : ""}
+      `;
+    }
+
+    function renderSelectedOrderDetail() {
+      els.selectedOrderDetail.innerHTML = "";
+      const order = orders.find(item => item.id === selectedOrderId);
+      els.selectedOrderEmpty.hidden = Boolean(order);
+      if (!order) return;
+
+      const card = document.createElement("article");
+      card.className = "detail-card";
+      card.innerHTML = detailCardHTML(order, true);
+      els.selectedOrderDetail.appendChild(card);
+      els.selectedOrderDetail.querySelectorAll("[data-edit]").forEach(button => {
+        button.addEventListener("click", () => openModal(button.dataset.edit));
+      });
+    }
+
+    function todayTodoOrders() {
+      return pendingOrders()
+        .filter(order => ["paid", "shipped"].includes(order.status))
+        .filter(order => {
+          const remaining = daysBetween(todayString(), order.expectedDone);
+          return remaining >= 0 && remaining <= 1;
+        });
+    }
+
+    function renderInsights() {
+      const todos = todayTodoOrders();
+      els.todoCount.textContent = `${todos.length} 项`;
+      els.todoList.innerHTML = "";
+
+      if (!todos.length) {
+        els.todoList.innerHTML = "<li><strong>暂无待办</strong>今天和明天没有需要发货或跟进确认收货的订单。</li>";
+      } else {
+        todos.slice(0, 5).forEach(order => {
+          const remaining = daysBetween(todayString(), order.expectedDone);
+          const timeLabel = remaining === 0 ? "今天" : "明天";
+          const action = order.status === "paid" ? `${timeLabel}发货` : `${timeLabel}跟进确认收货`;
+          const li = document.createElement("li");
+          li.className = "clickable";
+          li.innerHTML = `
+            <button type="button" data-detail="${order.id}">
+              <strong>${escapeHtml(order.itemName)}</strong>${escapeHtml(action)} · ${escapeHtml(order.buyer)}
+            </button>
+          `;
+          els.todoList.appendChild(li);
+        });
+      }
+
+      const stockTips = buildStockTips();
+      els.stockList.innerHTML = "";
+      stockTips.forEach(tip => {
+        const li = document.createElement("li");
+        li.innerHTML = `<strong>${tip.title}</strong>${tip.body}`;
+        els.stockList.appendChild(li);
+      });
+    }
+
+    function buildStockTips() {
+      const missingAccessories = orders.filter(order =>
+        ["draft", "paid"].includes(order.status) && !String(order.accessories || "").trim()
+      ).length;
+      const highValue = orders.filter(order =>
+        ["paid", "shipped"].includes(order.status) && Number(order.price || 0) >= 1000
+      ).length;
+      return [
+        {
+          title: "配件清单",
+          body: missingAccessories ? `${missingAccessories} 笔订单还没有记录配件，发货前建议补齐。` : "所有未完成订单都已记录配件清单。"
+        },
+        {
+          title: "高金额订单",
+          body: highValue ? `${highValue} 笔订单金额较高，建议保留验机视频和包装照片。` : "暂无需要重点留证的高金额订单。"
+        }
+      ];
+    }
+
+    function openModal(id = null) {
+      editingId = id;
+      els.orderForm.reset();
+      els.deleteBtn.style.visibility = id ? "visible" : "hidden";
+      els.modalTitle.textContent = id ? "编辑订单" : "新增订单";
+
+      const order = orders.find(item => item.id === id);
+      if (order) {
+        Object.entries(normalizeOrder(order)).forEach(([key, value]) => {
+          if (els.orderForm.elements[key]) els.orderForm.elements[key].value = value;
+        });
+      } else {
+        els.orderForm.elements.date.value = new Date().toISOString().slice(0, 10);
+        els.orderForm.elements.durationDays.value = 7;
+        els.orderForm.elements.status.value = "draft";
+      }
+      syncExpectedDone();
+
+      els.modalBackdrop.classList.add("open");
+      setTimeout(() => els.orderForm.elements.itemName.focus(), 30);
+    }
+
+    function closeModal() {
+      editingId = null;
+      els.modalBackdrop.classList.remove("open");
+    }
+
+    function exportBackup() {
+      closeSettings();
+      const blob = new Blob([JSON.stringify(orders, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `switch-orders-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function importBackup(event) {
+      closeSettings();
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          if (!requireAdmin()) return;
+          const imported = JSON.parse(reader.result);
+          if (!Array.isArray(imported)) throw new Error("invalid");
+          const payload = imported.map(order => toDbOrder(normalizeOrder(order)));
+          const { error } = await db.from("orders").insert(payload);
+          if (error) throw error;
+          await loadOrdersFromCloud();
+        } catch (error) {
+          alert(`导入失败：${error.message || "请选择之前导出的 JSON 备份文件。"}`);
+        }
+        event.target.value = "";
+      };
+      reader.readAsText(file);
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    async function initApp() {
+      await refreshSession();
+      await loadOrdersFromCloud();
+      db.auth.onAuthStateChange(async (_event, session) => {
+        currentUser = session?.user || null;
+        updateAuthUi();
+        render();
+      });
+    }
+
+    initApp();
+  </script>
+</body>
+</html>
